@@ -1,15 +1,15 @@
 use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
+use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
+use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_testing_utils::wallet::Wallet;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
         AdversaryFragmentSender, AdversaryFragmentSenderSetup, FragmentSender, FragmentSenderSetup,
     },
 };
-
-use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::time::Duration;
 
 #[test]
@@ -201,5 +201,38 @@ pub fn test_all_adversary_fragments() {
 
     verifier
         .value_moved_between_wallets(&faucet, &stake_pool_owner, stake_pool_owner_stake.into())
+        .unwrap();
+}
+
+#[test]
+pub fn one_hundreds_addresses() {
+    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+        .take(98)
+        .collect();
+    let mut stake_pool_owner = startup::create_new_account_address();
+
+    let stake_pool_owner_stake = 1;
+
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[stake_pool_owner.clone()],
+        &[],
+        &mut ConfigurationBuilder::new()
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM),
+    )
+    .unwrap();
+
+    let transaction_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    transaction_sender
+        .send_transaction_to_many(
+            &mut stake_pool_owner,
+            &receivers,
+            &jormungandr,
+            stake_pool_owner_stake.into(),
+        )
         .unwrap();
 }
