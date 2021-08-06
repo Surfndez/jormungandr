@@ -256,11 +256,8 @@ pub fn test_block_content_max_size_below_transaction_size() {
     )
     .unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        FragmentSenderSetup::should_stop_at_error(),
-    );
+    let transaction_sender =
+        jormungandr.fragment_sender(FragmentSenderSetup::should_stop_at_error());
 
     assert!(transaction_sender
         .send_transaction_to_many(

@@ -401,7 +401,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
                     return Ok(MemPoolCheck::new(fragment.id()));
                 }
 
-                if self.setup.stop_at_error() {
+                if self.setup.stop_at_error {
                     return Err(err);
                 }
 

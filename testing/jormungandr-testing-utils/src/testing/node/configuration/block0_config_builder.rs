@@ -3,7 +3,6 @@
 use chain_addr::{Address as ChainAddress, Discrimination, Kind};
 use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
-use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, BlockchainConfiguration,
@@ -138,14 +137,6 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_committee_ids(&mut self, committee_ids: Vec<CommitteeIdDef>) -> &mut Self {
         self.blockchain_configuration.committees = committee_ids;
-        self
-    }
-
-    pub fn with_block_content_max_size(
-        &mut self,
-        block_content_max_size: BlockContentMaxSize,
-    ) -> &mut Self {
-        self.blockchain_configuration.block_content_max_size = block_content_max_size;
         self
     }
 
