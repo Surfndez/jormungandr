@@ -524,7 +524,7 @@ dependencies = [
  "imhamt",
  "lazy_static",
  "quickcheck",
- "quickcheck_macros",
+ "quickcheck_macros 0.9.1",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
@@ -580,7 +580,7 @@ dependencies = [
  "chain-core",
  "chain-ser",
  "quickcheck",
- "quickcheck_macros",
+ "quickcheck_macros 0.9.1",
 ]
 
 [[package]]
@@ -588,7 +588,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#73a4b6cd8d64c9844200c70f86a7d18c519ce8a2"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "cryptoxide",
@@ -1862,7 +1862,7 @@ dependencies = [
  "poldercast",
  "prometheus",
  "quickcheck",
- "quickcheck_macros",
+ "quickcheck_macros 1.0.0",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "reqwest",
@@ -1955,7 +1955,7 @@ dependencies = [
  "humantime",
  "parity-multiaddr",
  "quickcheck",
- "quickcheck_macros",
+ "quickcheck_macros 1.0.0",
  "rand 0.7.3",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2975,6 +2975,17 @@ name = "quickcheck_macros"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "608c156fd8e97febc07dc9c2e2c80bf74cfc6ef26893eae3daf8bc2bc94a4b7f"
+dependencies = [
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "syn 1.0.74",
+]
+
+[[package]]
+name = "quickcheck_macros"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b22a693222d716a9587786f37ac3f6b4faedb5b80c23914e7303ff5a1d8016e9"
 dependencies = [
  "proc-macro2 1.0.28",
  "quote 1.0.9",
