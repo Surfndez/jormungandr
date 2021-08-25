@@ -1797,7 +1797,7 @@ version = "0.13.0-dev"
 dependencies = [
  "assert_fs",
  "base64",
- "bech32 0.7.3",
+ "bech32 0.8.1",
  "bincode",
  "bytes",
  "chain-addr",
@@ -1835,7 +1835,7 @@ dependencies = [
  "async-graphql-warp",
  "async-trait",
  "base64",
- "bech32 0.7.3",
+ "bech32 0.8.1",
  "bincode",
  "cardano-legacy-address",
  "chain-addr",
@@ -1894,7 +1894,7 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "base64",
- "bech32 0.7.3",
+ "bech32 0.8.1",
  "chain-addr",
  "chain-core",
  "chain-crypto",
@@ -1938,7 +1938,7 @@ name = "jormungandr-lib"
 version = "0.13.0-dev"
 dependencies = [
  "base64",
- "bech32 0.7.3",
+ "bech32 0.8.1",
  "bincode",
  "cardano-legacy-address",
  "chain-addr",
@@ -2014,7 +2014,7 @@ version = "0.13.0-dev"
 dependencies = [
  "assert_fs",
  "base64",
- "bech32 0.7.3",
+ "bech32 0.8.1",
  "bincode",
  "bytesize",
  "cardano-legacy-address",
