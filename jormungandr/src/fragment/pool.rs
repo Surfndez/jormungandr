@@ -5,6 +5,7 @@ use crate::{
         Fragment, FragmentId, Logs,
     },
     intercom::{NetworkMsg, PropagateMsg},
+    metrics::{Metrics, MetricsBackend},
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
@@ -38,6 +39,7 @@ pub struct Pools {
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
     last_block_date: BlockDate,
+    metrics: Metrics,
 }
 
 #[derive(Debug, Error)]
@@ -53,6 +55,7 @@ impl Pools {
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
         persistent_log: Option<File>,
+        metrics: Metrics,
     ) -> Self {
         // we need a pool even for passive nodes to be able to participate in
         // the fragments dissemination protocol
@@ -67,6 +70,7 @@ impl Pools {
             persistent_log: persistent_log
                 .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
             last_block_date: BlockDate::first(),
+            metrics,
         }
     }
 
@@ -236,6 +240,8 @@ impl Pools {
             accepted.push(id);
         }
 
+        self.metrics.add_tx_pending_cnt(accepted.len());
+
         Ok(FragmentsProcessingSummary { accepted, rejected })
     }
 
@@ -246,9 +252,16 @@ impl Pools {
             panic!("expected status to be in block, found {:?}", status);
         };
 
+        let mut removed_fragments_ids = HashSet::new();
+
         for pool in &mut self.pools {
-            pool.remove_all(fragment_ids.iter());
+            let removed_fragments_ids_step = pool.remove_all(fragment_ids.iter());
+            for fragment_id in removed_fragments_ids_step {
+                removed_fragments_ids.insert(fragment_id);
+            }
         }
+
+        self.metrics.sub_tx_pending_cnt(removed_fragments_ids.len());
 
         self.logs.modify_all(fragment_ids, status, date);
     }
@@ -264,7 +277,7 @@ impl Pools {
     ) -> (Contents, ApplyBlockLedger) {
         let Pools { logs, pools, .. } = self;
         let pool = &mut pools[pool_idx];
-        match selection_alg {
+        let (contents, ledger, tx_processed) = match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
                 selection_alg
@@ -278,7 +291,9 @@ impl Pools {
                     )
                     .await
             }
-        }
+        };
+        self.metrics.sub_tx_pending_cnt(tx_processed);
+        (contents, ledger)
     }
 
     // Remove from logs fragments that were confirmed (or rejected) in a branch
@@ -297,6 +312,9 @@ impl Pools {
                 fragment_ids.insert(id);
             }
         }
+
+        self.metrics.sub_tx_pending_cnt(fragment_ids.len());
+
         self.logs.modify_all(
             fragment_ids,
             FragmentStatus::Rejected {
@@ -562,13 +580,20 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn remove_all<'a>(&mut self, fragment_ids: impl IntoIterator<Item = &'a FragmentId>) {
+        pub fn remove_all<'a>(
+            &mut self,
+            fragment_ids: impl IntoIterator<Item = &'a FragmentId>,
+        ) -> Vec<FragmentId> {
+            let mut removed_fragments_ids = Vec::new();
             for fragment_id in fragment_ids {
                 let maybe_fragment = self.entries.remove(fragment_id);
                 if let Some(fragment) = maybe_fragment {
-                    self.timeout_queue_remove(&fragment);
+                    if self.timeout_queue_remove(&fragment) {
+                        removed_fragments_ids.push(*fragment_id);
+                    }
                 }
             }
+            removed_fragments_ids
         }
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
@@ -594,14 +619,15 @@ pub(super) mod internal {
             }
         }
 
-        fn timeout_queue_remove(&mut self, fragment: &Fragment) {
+        fn timeout_queue_remove(&mut self, fragment: &Fragment) -> bool {
             if let Some(valid_until) = get_transaction_expiry_date(fragment) {
                 let item = TimeoutQueueItem {
                     valid_until,
                     id: fragment.id(),
                 };
-                self.timeout_queue.remove(&item);
+                return self.timeout_queue.remove(&item);
             }
+            false
         }
 
         pub fn remove_expired_txs(&mut self, block_date: BlockDate) -> Vec<FragmentId> {
@@ -713,16 +739,31 @@ mod tests {
 
     #[test]
     fn correct_pools_number() {
+        let metrics = Metrics::builder().build();
         let (fake_msgbox, _) = crate::async_msg::channel(1);
         // a passive node still has 1 pool
-        let pools = Pools::new(0, 0, Logs::new(1), fake_msgbox.clone(), None);
+        let pools = Pools::new(
+            0,
+            0,
+            Logs::new(1),
+            fake_msgbox.clone(),
+            None,
+            metrics.clone(),
+        );
         assert_eq!(pools.pools.len(), 1);
 
         // a leader node should have as many pools as leaders
-        let pools = Pools::new(0, 1, Logs::new(1), fake_msgbox.clone(), None);
+        let pools = Pools::new(
+            0,
+            1,
+            Logs::new(1),
+            fake_msgbox.clone(),
+            None,
+            metrics.clone(),
+        );
         assert_eq!(pools.pools.len(), 1);
 
-        let pools = Pools::new(0, 5, Logs::new(1), fake_msgbox, None);
+        let pools = Pools::new(0, 5, Logs::new(1), fake_msgbox, None, metrics);
         assert_eq!(pools.pools.len(), 5);
     }
 }

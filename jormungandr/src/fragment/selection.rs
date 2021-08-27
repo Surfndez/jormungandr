@@ -31,7 +31,7 @@ pub trait FragmentSelectionAlgorithm {
         pool: &mut Pool,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
-    ) -> (Contents, ApplyBlockLedger);
+    ) -> (Contents, ApplyBlockLedger, usize);
 }
 
 #[derive(Debug)]
@@ -63,11 +63,12 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         pool: &mut Pool,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
-    ) -> (Contents, ApplyBlockLedger) {
+    ) -> (Contents, ApplyBlockLedger, usize) {
         use futures::future::{select, Either};
 
         let date: BlockDate = ledger.block_date().into();
         let mut current_total_size = 0;
+        let mut tx_processed = 0;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
 
@@ -88,6 +89,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 );
                 tracing::debug!("{}", reason);
                 logs.modify(id, FragmentStatus::Rejected { reason }, date);
+                tx_processed += 1;
                 continue;
             }
 
@@ -134,6 +136,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                                 },
                                 date,
                             );
+                            tx_processed += 1;
                             break;
                         }
                     }
@@ -154,9 +157,11 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                         msg.push_str(&e.to_string());
                     }
                     tracing::debug!(?error, "fragment is rejected");
-                    logs.modify(id, FragmentStatus::Rejected { reason: msg }, date)
+                    logs.modify(id, FragmentStatus::Rejected { reason: msg }, date);
                 }
             }
+
+            tx_processed += 1;
 
             if total_size == ledger_params.block_content_max_size {
                 break;
@@ -166,6 +171,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         return_to_pool.reverse();
         pool.return_to_pool(return_to_pool);
 
-        (contents_builder.into(), ledger)
+        (contents_builder.into(), ledger, tx_processed)
     }
 }

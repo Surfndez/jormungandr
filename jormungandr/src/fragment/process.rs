@@ -109,6 +109,7 @@ impl Process {
                 logs,
                 self.network_msg_box,
                 persistent_log,
+                stats_counter.clone()
             );
 
             loop {
